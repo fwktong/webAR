@@ -1,0 +1,294 @@
+/* 全站共用樣式 */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #050816;
+  color: #f5f5f5;
+}
+
+a {
+  color: #6eb5ff;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* 首頁樣式 */
+.landing-body {
+  background: radial-gradient(circle at top, #111827 0, #020617 60%);
+}
+
+.landing-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.landing-content {
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+}
+
+.landing-title {
+  font-size: 2.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.landing-subtitle {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #d1d5db;
+  margin-bottom: 2rem;
+}
+
+.primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 32px;
+  font-size: 1.1rem;
+  border-radius: 999px;
+  border: none;
+  outline: none;
+  background: linear-gradient(135deg, #3b82f6, #22c55e);
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 14px 28px rgba(15, 118, 110, 0.4);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.primary-btn:active {
+  transform: scale(0.96);
+  box-shadow: 0 8px 18px rgba(15, 118, 110, 0.35);
+  opacity: 0.9;
+}
+
+.landing-btn {
+  width: 100%;
+}
+
+.landing-help {
+  margin-top: 2rem;
+  text-align: left;
+  background: rgba(15, 23, 42, 0.85);
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  backdrop-filter: blur(10px);
+}
+
+.landing-help h2 {
+  margin-top: 0;
+  font-size: 1.1rem;
+}
+
+.landing-help ol {
+  padding-left: 1.4rem;
+  margin: 0;
+  font-size: 0.95rem;
+  color: #e5e7eb;
+}
+
+/* AR 頁面 */
+.ar-body {
+  background: #000;
+  overflow: hidden;
+}
+
+#ar-root {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+a-scene {
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* 底部控制列 */
+.ar-ui-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px 12px calc(env(safe-area-inset-bottom, 16px) + 8px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.85),
+    rgba(0, 0, 0, 0.6),
+    transparent
+  );
+  color: #f9fafb;
+}
+
+.secondary-btn {
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(209, 213, 219, 0.6);
+  background: rgba(15, 23, 42, 0.75);
+  color: #e5e7eb;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.circle-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  background: radial-gradient(circle at 30% 30%, #f9fafb, #9ca3af);
+  color: #111827;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.65);
+}
+
+.circle-btn:active {
+  transform: scale(0.92);
+}
+
+.record-btn {
+  background: radial-gradient(circle at 30% 30%, #fecaca, #b91c1c);
+  color: #fee2e2;
+}
+
+.recording .record-btn {
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.6);
+  }
+  70% {
+    transform: scale(1.06);
+    box-shadow: 0 0 0 10px rgba(248, 113, 113, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(248, 113, 113, 0);
+  }
+}
+
+.timer-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+}
+
+#record-timer {
+  font-size: 1.1rem;
+  color: #facc15;
+}
+
+.timer-max {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+/* AR 不支援提示 */
+.ar-unsupported {
+  position: absolute;
+  top: env(safe-area-inset-top, 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 90%;
+  background: rgba(15, 23, 42, 0.9);
+  color: #f9fafb;
+  padding: 10px 14px;
+  border-radius: 14px;
+  z-index: 10;
+  font-size: 0.85rem;
+  border: 1px solid rgba(248, 250, 252, 0.2);
+}
+
+.ar-unsupported h2 {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+}
+
+.ar-unsupported ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+/* 載入中遮罩 */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at top, rgba(30, 64, 175, 0.6), #020617);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.loading-box {
+  background: rgba(15, 23, 42, 0.9);
+  padding: 18px 20px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: #e5e7eb;
+  max-width: 260px;
+  text-align: center;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid rgba(148, 163, 184, 0.3);
+  border-top-color: #60a5fa;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (min-width: 768px) {
+  .landing-title {
+    font-size: 2.8rem;
+  }
+
+  .landing-subtitle {
+    font-size: 1.05rem;
+  }
+}
+
+
