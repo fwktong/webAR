@@ -8,24 +8,34 @@ AFRAME.registerShader("chroma-key", {
   },
 
   init: function (data) {
+    console.log("Chroma-key shader init, data.src:", data.src);
+    
     // 確保 video texture 正確初始化
     let videoTexture = null;
     if (data.src) {
       if (data.src instanceof HTMLVideoElement) {
         // 如果是 video element，創建 texture
+        console.log("創建 VideoTexture from HTMLVideoElement");
         videoTexture = new THREE.VideoTexture(data.src);
         videoTexture.minFilter = THREE.LinearFilter;
         videoTexture.magFilter = THREE.LinearFilter;
         videoTexture.format = THREE.RGBFormat;
+        videoTexture.needsUpdate = true;
       } else if (data.src && data.src.isTexture) {
         // 如果已經是 texture
+        console.log("使用現有的 Texture");
         videoTexture = data.src;
+      } else {
+        console.warn("data.src 不是 HTMLVideoElement 也不是 Texture:", data.src);
       }
+    } else {
+      console.warn("data.src 為空");
     }
     
     this.material = new THREE.ShaderMaterial({
       transparent: true,
       side: THREE.DoubleSide,
+      depthWrite: false, // 重要：確保透明材質正確渲染
       uniforms: {
         map: { value: videoTexture },
         keyColor: { value: new THREE.Color(data.keyColor.x, data.keyColor.y, data.keyColor.z) },
@@ -66,11 +76,14 @@ AFRAME.registerShader("chroma-key", {
   },
 
   update: function (data) {
+    console.log("Chroma-key shader update, data.src:", data.src);
+    
     if (data.src) {
       let videoTexture = null;
       if (data.src instanceof HTMLVideoElement) {
         // 如果是 video element，創建或更新 texture
         if (!this.material.uniforms.map.value || !this.material.uniforms.map.value.isVideoTexture) {
+          console.log("創建新的 VideoTexture");
           videoTexture = new THREE.VideoTexture(data.src);
           videoTexture.minFilter = THREE.LinearFilter;
           videoTexture.magFilter = THREE.LinearFilter;
@@ -78,18 +91,26 @@ AFRAME.registerShader("chroma-key", {
           this.material.uniforms.map.value = videoTexture;
         } else {
           // 更新現有的 texture
+          console.log("更新現有的 VideoTexture");
           this.material.uniforms.map.value.image = data.src;
         }
       } else if (data.src && data.src.isTexture) {
+        console.log("使用現有的 Texture");
         this.material.uniforms.map.value = data.src;
       } else {
+        console.warn("data.src 類型未知，直接賦值:", typeof data.src);
         this.material.uniforms.map.value = data.src;
       }
       
       // 確保 texture 更新
       if (this.material.uniforms.map.value) {
         this.material.uniforms.map.value.needsUpdate = true;
+        console.log("Texture needsUpdate 設置為 true");
+      } else {
+        console.warn("Texture 值為 null 或 undefined");
       }
+    } else {
+      console.warn("update: data.src 為空");
     }
     this.material.uniforms.keyColor.value = new THREE.Color(
       data.keyColor.x,
@@ -183,8 +204,22 @@ AFRAME.registerShader("chroma-key", {
     // 確保平面可見
     const planeMesh = videoPlane.getObject3D("mesh");
     if (planeMesh) {
+      console.log("平面狀態 - visible:", planeMesh.visible, 
+                 "position:", planeMesh.position,
+                 "parent visible:", planeMesh.parent ? planeMesh.parent.visible : "N/A");
+      
+      // 強制設置為可見
       planeMesh.visible = true;
-      console.log("設置平面為可見");
+      
+      // 確保父級（marker）也是可見的
+      if (planeMesh.parent) {
+        planeMesh.parent.visible = true;
+        console.log("設置父級（marker）為可見");
+      }
+      
+      // 確保位置正確
+      planeMesh.position.set(0, 0.2, 0);
+      console.log("設置平面為可見，位置:", planeMesh.position);
     }
     
     // 確保影片播放
@@ -684,26 +719,52 @@ AFRAME.registerShader("chroma-key", {
                 }, 1000);
               }
               
-              // 測試模式：強制顯示平面（即使沒有標記）
-              // 這可以幫助診斷問題是在標記偵測還是在渲染
+              // 測試模式：檢查所有平面的狀態
               setTimeout(() => {
                 const testPlane = document.getElementById("video-plane");
+                const testRedPlane = document.getElementById("test-plane");
+                const marker = document.querySelector("a-marker");
+                
+                console.log("=== 測試模式：檢查平面狀態 ===");
+                
                 if (testPlane) {
                   const testMesh = testPlane.getObject3D("mesh");
                   if (testMesh) {
-                    console.log("測試模式：強制顯示平面和播放影片");
+                    console.log("影片平面 - visible:", testMesh.visible, 
+                               "position:", testMesh.position,
+                               "rotation:", testMesh.rotation,
+                               "scale:", testMesh.scale);
+                    // 強制設置為可見
                     testMesh.visible = true;
-                    const testVideo = document.getElementById("greenscreen-video");
-                    if (testVideo) {
-                      testVideo.play().catch(err => console.warn("測試播放失敗:", err));
-                    }
-                    // 5秒後恢復正常模式
-                    setTimeout(() => {
-                      console.log("測試模式結束，恢復正常標記偵測");
-                      testMesh.visible = false;
-                      if (testVideo) testVideo.pause();
-                    }, 5000);
+                    testMesh.position.set(0, 0.2, 0);
+                    console.log("強制設置影片平面為可見");
                   }
+                }
+                
+                if (testRedPlane) {
+                  const redMesh = testRedPlane.getObject3D("mesh");
+                  if (redMesh) {
+                    console.log("紅色測試平面 - visible:", redMesh.visible,
+                               "position:", redMesh.position);
+                    redMesh.visible = true;
+                    console.log("強制設置紅色測試平面為可見");
+                  }
+                }
+                
+                if (marker && marker.object3D) {
+                  console.log("標記 - visible:", marker.object3D.visible,
+                             "position:", marker.object3D.position);
+                }
+                
+                // 檢查相機位置
+                const camera = scene.camera;
+                if (camera) {
+                  console.log("相機位置:", camera.position);
+                }
+                
+                const testVideo = document.getElementById("greenscreen-video");
+                if (testVideo) {
+                  testVideo.play().catch(err => console.warn("測試播放失敗:", err));
                 }
               }, 2000);
             } else {

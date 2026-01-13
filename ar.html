@@ -55,15 +55,24 @@
 
         <!-- Hiro 標記：在此標記上顯示去背影片 -->
         <a-marker preset="hiro" id="hiro-marker">
-          <!-- 使用自訂 chroma-key shader，將綠色背景去除 -->
-          <!-- position="0 0.1 0" 表示在標記上方 0.1 單位，rotation="-90 0 0" 表示平躺 -->
+          <!-- 先使用簡單材質測試，確認平面是否可見 -->
           <a-plane
             id="video-plane"
-            position="0 0.15 0"
+            position="0 0.2 0"
             rotation="-90 0 0"
             width="1.5"
             height="1.0"
             material="shader: chroma-key; src: #greenscreen-video; keyColor: 0.0 1.0 0.0; similarity: 0.4; smoothness: 0.1; side: double;"
+            visible="true"
+          ></a-plane>
+          <!-- 測試用：簡單的紅色平面，用於確認位置 -->
+          <a-plane
+            id="test-plane"
+            position="0 0.3 0"
+            rotation="-90 0 0"
+            width="0.5"
+            height="0.5"
+            material="color: red; side: double;"
             visible="true"
           ></a-plane>
         </a-marker>
