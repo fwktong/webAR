@@ -8,10 +8,26 @@ AFRAME.registerShader("chroma-key", {
   },
 
   init: function (data) {
+    // 確保 video texture 正確初始化
+    let videoTexture = null;
+    if (data.src) {
+      if (data.src instanceof HTMLVideoElement) {
+        // 如果是 video element，創建 texture
+        videoTexture = new THREE.VideoTexture(data.src);
+        videoTexture.minFilter = THREE.LinearFilter;
+        videoTexture.magFilter = THREE.LinearFilter;
+        videoTexture.format = THREE.RGBFormat;
+      } else if (data.src && data.src.isTexture) {
+        // 如果已經是 texture
+        videoTexture = data.src;
+      }
+    }
+    
     this.material = new THREE.ShaderMaterial({
       transparent: true,
+      side: THREE.DoubleSide,
       uniforms: {
-        map: { value: data.src },
+        map: { value: videoTexture },
         keyColor: { value: new THREE.Color(data.keyColor.x, data.keyColor.y, data.keyColor.z) },
         similarity: { value: data.similarity },
         smoothness: { value: data.smoothness },
@@ -51,7 +67,29 @@ AFRAME.registerShader("chroma-key", {
 
   update: function (data) {
     if (data.src) {
-      this.material.uniforms.map.value = data.src;
+      let videoTexture = null;
+      if (data.src instanceof HTMLVideoElement) {
+        // 如果是 video element，創建或更新 texture
+        if (!this.material.uniforms.map.value || !this.material.uniforms.map.value.isVideoTexture) {
+          videoTexture = new THREE.VideoTexture(data.src);
+          videoTexture.minFilter = THREE.LinearFilter;
+          videoTexture.magFilter = THREE.LinearFilter;
+          videoTexture.format = THREE.RGBFormat;
+          this.material.uniforms.map.value = videoTexture;
+        } else {
+          // 更新現有的 texture
+          this.material.uniforms.map.value.image = data.src;
+        }
+      } else if (data.src && data.src.isTexture) {
+        this.material.uniforms.map.value = data.src;
+      } else {
+        this.material.uniforms.map.value = data.src;
+      }
+      
+      // 確保 texture 更新
+      if (this.material.uniforms.map.value) {
+        this.material.uniforms.map.value.needsUpdate = true;
+      }
     }
     this.material.uniforms.keyColor.value = new THREE.Color(
       data.keyColor.x,
@@ -60,6 +98,16 @@ AFRAME.registerShader("chroma-key", {
     );
     this.material.uniforms.similarity.value = data.similarity;
     this.material.uniforms.smoothness.value = data.smoothness;
+  },
+  
+  tick: function () {
+    // 持續更新 video texture
+    if (this.material && this.material.uniforms && this.material.uniforms.map) {
+      const texture = this.material.uniforms.map.value;
+      if (texture && texture.image && texture.image.readyState >= 2) {
+        texture.needsUpdate = true;
+      }
+    }
   },
 });
 
@@ -119,17 +167,60 @@ AFRAME.registerShader("chroma-key", {
 
   function startVideoOnMarker() {
     const video = document.getElementById("greenscreen-video");
-    if (!video) return;
+    if (!video) {
+      console.error("找不到綠幕影片元素");
+      return;
+    }
+    
     const marker = document.querySelector("a-marker");
-    if (!marker) return;
+    if (!marker) {
+      console.error("找不到 marker 元素");
+      return;
+    }
+
+    // 確保影片載入
+    video.addEventListener("loadeddata", () => {
+      console.log("影片已載入，readyState:", video.readyState);
+    });
+
+    video.addEventListener("error", (e) => {
+      console.error("影片載入錯誤:", e);
+    });
 
     marker.addEventListener("markerFound", () => {
-      video.play().catch(() => {
-        // 某些瀏覽器可能需要使用者互動才允許播放，忽略錯誤即可
-      });
+      console.log("標記已偵測到");
+      const videoPlane = document.getElementById("video-plane");
+      if (videoPlane) {
+        console.log("影片平面存在，嘗試播放影片");
+        // 確保影片播放
+        video.play().catch((err) => {
+          console.warn("影片播放失敗:", err);
+        });
+        
+        // 檢查 shader 材質
+        const mesh = videoPlane.getObject3D("mesh");
+        if (mesh && mesh.material) {
+          console.log("材質類型:", mesh.material.type);
+          // 確保材質的 map 有正確的 video texture
+          if (mesh.material.uniforms && mesh.material.uniforms.map) {
+            const texture = mesh.material.uniforms.map.value;
+            if (texture) {
+              console.log("Texture 存在，needsUpdate:", texture.needsUpdate);
+              texture.needsUpdate = true;
+            } else {
+              console.warn("Texture 不存在");
+            }
+          }
+        } else {
+          console.warn("找不到 mesh 或材質");
+        }
+      } else {
+        console.error("找不到影片平面元素");
+      }
     });
 
     marker.addEventListener("markerLost", () => {
+      console.log("標記遺失");
       video.pause();
     });
   }
@@ -422,19 +513,63 @@ AFRAME.registerShader("chroma-key", {
 
     setupBackButton();
     setupCaptureAndRecord();
-    startVideoOnMarker();
-    setupCameraMonitoring();
-    preventPagePause();
     
-    // 確保頁面載入後場景立即開始渲染
+    // 等待場景完全載入後再初始化
     if (scene) {
-      // 延遲一點確保 AR.js 已初始化
-      setTimeout(() => {
-        if (scene) {
-          scene.play();
-          console.log("場景已啟動，isPlaying:", scene.isPlaying);
-        }
-      }, 500);
+      scene.addEventListener("loaded", () => {
+        console.log("場景已載入，開始初始化 AR 功能");
+        // 延遲一點確保 AR.js 系統已完全初始化
+        setTimeout(() => {
+          startVideoOnMarker();
+          setupCameraMonitoring();
+          preventPagePause();
+          
+          // 確保場景播放
+          if (scene) {
+            scene.play();
+            console.log("場景已啟動，isPlaying:", scene.isPlaying);
+          }
+          
+          // 檢查影片狀態並確保載入
+          const video = document.getElementById("greenscreen-video");
+          if (video) {
+            console.log("影片初始狀態 - readyState:", video.readyState, "paused:", video.paused, "src:", video.src);
+            
+            // 監聽影片載入事件
+            video.addEventListener("canplay", () => {
+              console.log("影片可以播放，readyState:", video.readyState);
+            });
+            
+            video.addEventListener("loadedmetadata", () => {
+              console.log("影片 metadata 已載入，尺寸:", video.videoWidth, "x", video.videoHeight);
+            });
+            
+            // 預載影片
+            video.load();
+            
+            // 檢查平面元素
+            const plane = document.getElementById("video-plane");
+            if (plane) {
+              console.log("影片平面元素存在");
+              // 等待一個 tick 後檢查材質
+              setTimeout(() => {
+                const mesh = plane.getObject3D("mesh");
+                if (mesh) {
+                  console.log("Mesh 存在，材質:", mesh.material ? mesh.material.type : "無");
+                  if (mesh.material && mesh.material.uniforms) {
+                    const texture = mesh.material.uniforms.map.value;
+                    console.log("Texture:", texture ? (texture.isTexture ? "是 Texture" : "不是 Texture") : "無");
+                  }
+                } else {
+                  console.warn("找不到 mesh");
+                }
+              }, 2000);
+            }
+          } else {
+            console.error("找不到影片元素");
+          }
+        }, 1000);
+      });
     }
     
     // 額外保護：定期檢查場景是否還在播放
