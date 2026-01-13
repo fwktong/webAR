@@ -294,6 +294,116 @@ AFRAME.registerShader("chroma-key", {
       video.pause();
     }
   }
+  
+  // 檢查標記並更新可見性
+  let lastMatrixString = "";
+  function checkMarkerAndUpdateVisibility() {
+    const marker = document.querySelector("a-marker");
+    if (!marker || !marker.object3D) return;
+    
+    const videoPlane = document.getElementById("video-plane");
+    const testPlane = document.getElementById("test-plane");
+    if (!videoPlane) return;
+    
+    // 檢查 AR.js marker 組件的內部狀態
+    let isMarkerDetected = false;
+    
+    // 方法1: 檢查矩陣是否在變化（最可靠的方法）
+    const matrix = marker.object3D.matrix;
+    if (matrix && matrix.elements) {
+      // 將矩陣轉換為字符串來比較
+      const matrixString = matrix.elements.join(",");
+      
+      // 如果矩陣改變了，表示標記被追蹤到
+      if (matrixString !== lastMatrixString && lastMatrixString !== "") {
+        isMarkerDetected = true;
+        console.log("檢測到矩陣變化，標記被追蹤到");
+      }
+      
+      // 檢查矩陣的平移部分（elements[12], [13], [14]）
+      // 如果這些值不是 0，表示標記被偵測到
+      const tx = Math.abs(matrix.elements[12]);
+      const ty = Math.abs(matrix.elements[13]);
+      const tz = Math.abs(matrix.elements[14]);
+      
+      // 如果平移值大於一個很小的閾值，表示標記被偵測到
+      if (tx > 0.001 || ty > 0.001 || tz > 0.001) {
+        isMarkerDetected = true;
+      }
+      
+      // 檢查矩陣是否不是單位矩陣
+      if (!matrix.isIdentity()) {
+        // 進一步檢查：確保不是初始狀態
+        // 如果矩陣有實際的變換值，標記應該被偵測到
+        const hasRealTransform = tx > 0.01 || ty > 0.01 || tz > 0.01;
+        if (hasRealTransform) {
+          isMarkerDetected = true;
+        }
+      }
+      
+      lastMatrixString = matrixString;
+    }
+    
+    // 方法2: 直接檢查 AR.js 的內部狀態
+    if (marker.components && marker.components['arjs-marker']) {
+      const arjsMarker = marker.components['arjs-marker'];
+      if (arjsMarker.arMarker) {
+        // 某些版本的 AR.js 可能會設置 visible
+        // 但我們主要依賴矩陣檢查
+      }
+    }
+    
+    // 如果標記被偵測到，強制設置可見性
+    if (isMarkerDetected) {
+      // 強制設置 marker 和所有子元素為可見
+      if (!marker.object3D.visible) {
+        marker.object3D.visible = true;
+        console.log("檢測到標記，強制設置 marker.object3D.visible = true");
+      }
+      
+      // 確保所有子元素可見
+      marker.object3D.traverse((child) => {
+        if (child.visible !== undefined && !child.visible) {
+          child.visible = true;
+        }
+      });
+      
+      // 播放影片
+      const video = document.getElementById("greenscreen-video");
+      if (video && video.paused) {
+        video.play().catch(err => console.warn("自動播放失敗:", err));
+      }
+    }
+    
+    // 無論是否偵測到，都強制設置一次（用於測試）
+    // 這可以幫助我們確認渲染是否正常
+    // 先嘗試一次強制設置，看看是否能顯示
+    if (!window.forceVisibleTested) {
+      window.forceVisibleTested = true;
+      console.log("強制設置測試：設置 marker 和子元素為可見（僅測試一次）");
+      marker.object3D.visible = true;
+      marker.object3D.traverse((child) => {
+        if (child.visible !== undefined) {
+          child.visible = true;
+        }
+      });
+      
+      // 也強制播放影片
+      const video = document.getElementById("greenscreen-video");
+      if (video) {
+        video.play().catch(err => console.warn("強制播放失敗:", err));
+      }
+      
+      // 輸出詳細狀態
+      console.log("強制設置後的狀態:");
+      console.log("  marker.object3D.visible:", marker.object3D.visible);
+      const planeMesh = videoPlane.getObject3D("mesh");
+      const testMesh = testPlane ? testPlane.getObject3D("mesh") : null;
+      console.log("  planeMesh.visible:", planeMesh ? planeMesh.visible : "N/A");
+      console.log("  testMesh.visible:", testMesh ? testMesh.visible : "N/A");
+      console.log("  matrix:", matrix ? matrix.elements.slice(12, 15) : "N/A");
+    }
+  }
 
   function startVideoOnMarker() {
     const video = document.getElementById("greenscreen-video");
@@ -320,86 +430,22 @@ AFRAME.registerShader("chroma-key", {
     });
     
     // 額外：定期檢查標記狀態（作為備用機制）
+    // 這個已經被 checkMarkerAndUpdateVisibility 取代，但保留作為最終備用
     let lastMarkerState = false;
     let markerCheckInterval = setInterval(() => {
-      if (!marker || !marker.object3D) return;
-      
-      const videoPlane = document.getElementById("video-plane");
-      const testPlane = document.getElementById("test-plane");
-      if (!videoPlane) return;
-      
-      // 關鍵：檢查 AR.js 是否真的偵測到標記
-      // 通過檢查 marker 組件的內部狀態
-      let markerDetected = false;
-      
-      // 方法1: 檢查 AR.js marker 組件的內部狀態
-      if (marker.components && marker.components['arjs-marker']) {
-        const arjsMarker = marker.components['arjs-marker'];
-        // AR.js 在偵測到標記時會設置 object3D.visible = true
-        // 但我們需要檢查實際的追蹤狀態
-        if (arjsMarker.arMarker) {
-          // 檢查 AR.js 內部是否真的偵測到標記
-          // 通過檢查 object3D 的矩陣是否被更新
-          const matrix = marker.object3D.matrix;
-          // 如果矩陣不是單位矩陣，表示標記被追蹤到
-          if (matrix && !matrix.isIdentity && matrix.elements) {
-            // 檢查矩陣是否有非零的平移（表示標記被偵測到）
-            const hasTranslation = Math.abs(matrix.elements[12]) > 0.001 || 
-                                   Math.abs(matrix.elements[13]) > 0.001 || 
-                                   Math.abs(matrix.elements[14]) > 0.001;
-            if (hasTranslation) {
-              markerDetected = true;
-            }
-          }
-        }
-      }
-      
-      // 方法2: 如果 marker.object3D.visible 是 false，但我們認為標記被偵測到，強制設置為可見
-      if (markerDetected && !marker.object3D.visible) {
-        console.log("標記被偵測到但 object3D.visible 為 false，強制設置為可見");
-        marker.object3D.visible = true;
-        // 確保所有子元素也是可見的
-        marker.object3D.traverse((child) => {
-          if (child.visible !== undefined) {
-            child.visible = true;
-          }
-        });
-      }
-      
-      // 方法3: 檢查平面的父級（marker）是否可見
-      const planeMesh = videoPlane.getObject3D("mesh");
-      const testMesh = testPlane ? testPlane.getObject3D("mesh") : null;
-      
-      // 如果標記被偵測到，確保所有子元素可見
-      if (markerDetected) {
-        if (planeMesh) {
-          planeMesh.visible = true;
-        }
-        if (testMesh) {
-          testMesh.visible = true;
-        }
-        if (marker.object3D) {
-          marker.object3D.visible = true;
-        }
-      }
-      
-      if (markerDetected !== lastMarkerState) {
-        lastMarkerState = markerDetected;
-        if (markerDetected) {
-          console.log("標記狀態檢查：可見（備用機制觸發）");
-          playVideoOnMarker();
-        } else {
-          console.log("標記狀態檢查：不可見（備用機制觸發）");
-          pauseVideoOnMarker();
-        }
-      }
+      checkMarkerAndUpdateVisibility();
       
       // 調試信息：每5秒輸出一次狀態
-      if (Math.random() < 0.01) { // 約每5秒一次（200ms * 25）
-        console.log("標記調試 - marker.object3D.visible:", marker.object3D ? marker.object3D.visible : "N/A",
+      if (Math.random() < 0.01) { // 約每5秒一次
+        const marker = document.querySelector("a-marker");
+        const videoPlane = document.getElementById("video-plane");
+        const planeMesh = videoPlane ? videoPlane.getObject3D("mesh") : null;
+        const video = document.getElementById("greenscreen-video");
+        
+        console.log("標記調試 - marker.object3D.visible:", marker && marker.object3D ? marker.object3D.visible : "N/A",
                    "planeMesh.visible:", planeMesh ? planeMesh.visible : "N/A",
-                   "markerDetected:", markerDetected,
-                   "video.paused:", video ? video.paused : "N/A");
+                   "video.paused:", video ? video.paused : "N/A",
+                   "matrix isIdentity:", marker && marker.object3D && marker.object3D.matrix ? marker.object3D.matrix.isIdentity() : "N/A");
       }
     }, 200); // 每 200ms 檢查一次
     
