@@ -194,6 +194,9 @@ AFRAME.registerShader("chroma-key", {
     }
     
     const videoPlane = document.getElementById("video-plane");
+    const testPlane = document.getElementById("test-plane");
+    const marker = document.querySelector("a-marker");
+    
     if (!videoPlane) {
       console.warn("playVideoOnMarker: 找不到影片平面元素");
       return;
@@ -201,8 +204,24 @@ AFRAME.registerShader("chroma-key", {
     
     console.log("標記已偵測到，嘗試播放影片");
     
+    // 關鍵：強制設置 marker 和所有子元素為可見
+    if (marker && marker.object3D) {
+      marker.object3D.visible = true;
+      console.log("強制設置 marker.object3D.visible = true");
+      
+      // 遍歷所有子元素，設置為可見
+      marker.object3D.traverse((child) => {
+        if (child.visible !== undefined) {
+          child.visible = true;
+        }
+      });
+      console.log("設置所有子元素為可見");
+    }
+    
     // 確保平面可見
     const planeMesh = videoPlane.getObject3D("mesh");
+    const testMesh = testPlane ? testPlane.getObject3D("mesh") : null;
+    
     if (planeMesh) {
       console.log("平面狀態 - visible:", planeMesh.visible, 
                  "position:", planeMesh.position,
@@ -220,6 +239,11 @@ AFRAME.registerShader("chroma-key", {
       // 確保位置正確
       planeMesh.position.set(0, 0.2, 0);
       console.log("設置平面為可見，位置:", planeMesh.position);
+    }
+    
+    if (testMesh) {
+      testMesh.visible = true;
+      console.log("設置測試平面為可見");
     }
     
     // 確保影片播放
@@ -301,49 +325,67 @@ AFRAME.registerShader("chroma-key", {
       if (!marker || !marker.object3D) return;
       
       const videoPlane = document.getElementById("video-plane");
+      const testPlane = document.getElementById("test-plane");
       if (!videoPlane) return;
       
-      // 檢查標記是否可見（通過檢查 object3D 的 visible 屬性）
-      // 或者檢查 AR.js 的 marker 組件狀態
-      let markerVisible = false;
+      // 關鍵：檢查 AR.js 是否真的偵測到標記
+      // 通過檢查 marker 組件的內部狀態
+      let markerDetected = false;
       
-      // 方法1: 檢查 marker 的 object3D visible
-      if (marker.object3D) {
-        markerVisible = marker.object3D.visible;
-      }
-      
-      // 方法2: 檢查 marker 組件的屬性
-      if (marker.components) {
-        // 檢查 arjs-marker 組件
+      // 方法1: 檢查 AR.js marker 組件的內部狀態
+      if (marker.components && marker.components['arjs-marker']) {
         const arjsMarker = marker.components['arjs-marker'];
-        if (arjsMarker) {
-          // 檢查 AR.js 內部狀態
-          if (arjsMarker.arMarker) {
-            // 某些版本可能有 visible 屬性
-            if (arjsMarker.arMarker.visible !== undefined) {
-              markerVisible = arjsMarker.arMarker.visible;
+        // AR.js 在偵測到標記時會設置 object3D.visible = true
+        // 但我們需要檢查實際的追蹤狀態
+        if (arjsMarker.arMarker) {
+          // 檢查 AR.js 內部是否真的偵測到標記
+          // 通過檢查 object3D 的矩陣是否被更新
+          const matrix = marker.object3D.matrix;
+          // 如果矩陣不是單位矩陣，表示標記被追蹤到
+          if (matrix && !matrix.isIdentity && matrix.elements) {
+            // 檢查矩陣是否有非零的平移（表示標記被偵測到）
+            const hasTranslation = Math.abs(matrix.elements[12]) > 0.001 || 
+                                   Math.abs(matrix.elements[13]) > 0.001 || 
+                                   Math.abs(matrix.elements[14]) > 0.001;
+            if (hasTranslation) {
+              markerDetected = true;
             }
           }
         }
       }
       
+      // 方法2: 如果 marker.object3D.visible 是 false，但我們認為標記被偵測到，強制設置為可見
+      if (markerDetected && !marker.object3D.visible) {
+        console.log("標記被偵測到但 object3D.visible 為 false，強制設置為可見");
+        marker.object3D.visible = true;
+        // 確保所有子元素也是可見的
+        marker.object3D.traverse((child) => {
+          if (child.visible !== undefined) {
+            child.visible = true;
+          }
+        });
+      }
+      
       // 方法3: 檢查平面的父級（marker）是否可見
       const planeMesh = videoPlane.getObject3D("mesh");
-      if (planeMesh && planeMesh.parent) {
-        // 如果平面的父級（marker）可見，標記應該被偵測到
-        if (planeMesh.parent.visible) {
-          markerVisible = true;
+      const testMesh = testPlane ? testPlane.getObject3D("mesh") : null;
+      
+      // 如果標記被偵測到，確保所有子元素可見
+      if (markerDetected) {
+        if (planeMesh) {
+          planeMesh.visible = true;
+        }
+        if (testMesh) {
+          testMesh.visible = true;
+        }
+        if (marker.object3D) {
+          marker.object3D.visible = true;
         }
       }
       
-      // 方法4: 直接檢查平面的 visible（如果平面可見，標記應該被偵測到）
-      if (planeMesh && planeMesh.visible) {
-        markerVisible = true;
-      }
-      
-      if (markerVisible !== lastMarkerState) {
-        lastMarkerState = markerVisible;
-        if (markerVisible) {
+      if (markerDetected !== lastMarkerState) {
+        lastMarkerState = markerDetected;
+        if (markerDetected) {
           console.log("標記狀態檢查：可見（備用機制觸發）");
           playVideoOnMarker();
         } else {
@@ -356,6 +398,7 @@ AFRAME.registerShader("chroma-key", {
       if (Math.random() < 0.01) { // 約每5秒一次（200ms * 25）
         console.log("標記調試 - marker.object3D.visible:", marker.object3D ? marker.object3D.visible : "N/A",
                    "planeMesh.visible:", planeMesh ? planeMesh.visible : "N/A",
+                   "markerDetected:", markerDetected,
                    "video.paused:", video ? video.paused : "N/A");
       }
     }, 200); // 每 200ms 檢查一次
