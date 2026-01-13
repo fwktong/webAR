@@ -165,6 +165,69 @@ AFRAME.registerShader("chroma-key", {
     return `${mm}:${ss}`;
   }
 
+  function playVideoOnMarker() {
+    const video = document.getElementById("greenscreen-video");
+    if (!video) {
+      console.warn("playVideoOnMarker: 找不到影片元素");
+      return;
+    }
+    
+    const videoPlane = document.getElementById("video-plane");
+    if (!videoPlane) {
+      console.warn("playVideoOnMarker: 找不到影片平面元素");
+      return;
+    }
+    
+    console.log("標記已偵測到，嘗試播放影片");
+    
+    // 確保影片播放
+    if (video.paused || video.ended) {
+      video.play().then(() => {
+        console.log("影片播放成功");
+      }).catch((err) => {
+        console.warn("影片播放失敗:", err);
+      });
+    }
+    
+    // 檢查並更新 shader 材質
+    const mesh = videoPlane.getObject3D("mesh");
+    if (mesh && mesh.material) {
+      console.log("更新材質，類型:", mesh.material.type);
+      
+      // 確保材質的 map 有正確的 video texture
+      if (mesh.material.uniforms && mesh.material.uniforms.map) {
+        const texture = mesh.material.uniforms.map.value;
+        if (texture) {
+          if (texture.isTexture) {
+            console.log("Texture 存在，強制更新");
+            texture.needsUpdate = true;
+            // 如果是 VideoTexture，確保持續更新
+            if (texture.image && texture.image instanceof HTMLVideoElement) {
+              // VideoTexture 應該自動更新，但我們確保它被標記為需要更新
+              texture.needsUpdate = true;
+            }
+          } else {
+            console.warn("Texture 不是有效的 THREE.Texture");
+          }
+        } else {
+          console.warn("Texture 值為 null 或 undefined");
+        }
+      } else {
+        console.warn("材質沒有 uniforms.map");
+      }
+    } else {
+      console.warn("找不到 mesh 或材質");
+    }
+  }
+
+  function pauseVideoOnMarker() {
+    const video = document.getElementById("greenscreen-video");
+    if (video) {
+      console.log("標記遺失，暫停影片");
+      video.pause();
+    }
+  }
+
   function startVideoOnMarker() {
     const video = document.getElementById("greenscreen-video");
     if (!video) {
@@ -178,51 +241,56 @@ AFRAME.registerShader("chroma-key", {
       return;
     }
 
-    // 確保影片載入
-    video.addEventListener("loadeddata", () => {
-      console.log("影片已載入，readyState:", video.readyState);
-    });
+    console.log("設置標記事件監聽器");
 
-    video.addEventListener("error", (e) => {
-      console.error("影片載入錯誤:", e);
-    });
-
+    // 使用 A-Frame 的事件系統
     marker.addEventListener("markerFound", () => {
-      console.log("標記已偵測到");
-      const videoPlane = document.getElementById("video-plane");
-      if (videoPlane) {
-        console.log("影片平面存在，嘗試播放影片");
-        // 確保影片播放
-        video.play().catch((err) => {
-          console.warn("影片播放失敗:", err);
-        });
-        
-        // 檢查 shader 材質
-        const mesh = videoPlane.getObject3D("mesh");
-        if (mesh && mesh.material) {
-          console.log("材質類型:", mesh.material.type);
-          // 確保材質的 map 有正確的 video texture
-          if (mesh.material.uniforms && mesh.material.uniforms.map) {
-            const texture = mesh.material.uniforms.map.value;
-            if (texture) {
-              console.log("Texture 存在，needsUpdate:", texture.needsUpdate);
-              texture.needsUpdate = true;
-            } else {
-              console.warn("Texture 不存在");
-            }
-          }
-        } else {
-          console.warn("找不到 mesh 或材質");
-        }
-      } else {
-        console.error("找不到影片平面元素");
-      }
+      playVideoOnMarker();
     });
 
     marker.addEventListener("markerLost", () => {
-      console.log("標記遺失");
-      video.pause();
+      pauseVideoOnMarker();
     });
+    
+    // 額外：定期檢查標記狀態（作為備用機制）
+    let lastMarkerState = false;
+    let markerCheckInterval = setInterval(() => {
+      if (!marker || !marker.object3D) return;
+      
+      // 檢查標記是否可見（通過檢查 object3D 的 visible 屬性）
+      // 或者檢查 AR.js 的 marker 組件狀態
+      let markerVisible = false;
+      
+      if (marker.object3D) {
+        markerVisible = marker.object3D.visible;
+      }
+      
+      // 也可以通過檢查 marker 組件的屬性
+      if (marker.components && marker.components['arjs-marker']) {
+        const markerComponent = marker.components['arjs-marker'];
+        // 某些版本的 AR.js 可能有 isMarkerVisible 屬性
+        if (markerComponent.isMarkerVisible !== undefined) {
+          markerVisible = markerComponent.isMarkerVisible;
+        }
+      }
+      
+      if (markerVisible !== lastMarkerState) {
+        lastMarkerState = markerVisible;
+        if (markerVisible) {
+          console.log("標記狀態檢查：可見（備用機制觸發）");
+          playVideoOnMarker();
+        } else {
+          console.log("標記狀態檢查：不可見（備用機制觸發）");
+          pauseVideoOnMarker();
+        }
+      }
+    }, 200); // 每 200ms 檢查一次
+    
+    // 存儲 interval ID 以便清理
+    if (window.arMarkerCheckInterval) {
+      clearInterval(window.arMarkerCheckInterval);
+    }
+    window.arMarkerCheckInterval = markerCheckInterval;
   }
 
   function setupBackButton() {
@@ -518,57 +586,75 @@ AFRAME.registerShader("chroma-key", {
     if (scene) {
       scene.addEventListener("loaded", () => {
         console.log("場景已載入，開始初始化 AR 功能");
-        // 延遲一點確保 AR.js 系統已完全初始化
-        setTimeout(() => {
-          startVideoOnMarker();
-          setupCameraMonitoring();
-          preventPagePause();
+        
+        // 等待 AR.js 系統完全初始化
+        scene.addEventListener("arjs-video-loaded", () => {
+          console.log("AR.js 相機已載入，開始設置標記監聽");
           
-          // 確保場景播放
-          if (scene) {
-            scene.play();
-            console.log("場景已啟動，isPlaying:", scene.isPlaying);
-          }
-          
-          // 檢查影片狀態並確保載入
-          const video = document.getElementById("greenscreen-video");
-          if (video) {
-            console.log("影片初始狀態 - readyState:", video.readyState, "paused:", video.paused, "src:", video.src);
+          // 再延遲一點確保所有組件都已初始化
+          setTimeout(() => {
+            startVideoOnMarker();
+            setupCameraMonitoring();
+            preventPagePause();
             
-            // 監聽影片載入事件
-            video.addEventListener("canplay", () => {
-              console.log("影片可以播放，readyState:", video.readyState);
-            });
-            
-            video.addEventListener("loadedmetadata", () => {
-              console.log("影片 metadata 已載入，尺寸:", video.videoWidth, "x", video.videoHeight);
-            });
-            
-            // 預載影片
-            video.load();
-            
-            // 檢查平面元素
-            const plane = document.getElementById("video-plane");
-            if (plane) {
-              console.log("影片平面元素存在");
-              // 等待一個 tick 後檢查材質
-              setTimeout(() => {
-                const mesh = plane.getObject3D("mesh");
-                if (mesh) {
-                  console.log("Mesh 存在，材質:", mesh.material ? mesh.material.type : "無");
-                  if (mesh.material && mesh.material.uniforms) {
-                    const texture = mesh.material.uniforms.map.value;
-                    console.log("Texture:", texture ? (texture.isTexture ? "是 Texture" : "不是 Texture") : "無");
-                  }
-                } else {
-                  console.warn("找不到 mesh");
-                }
-              }, 2000);
+            // 確保場景播放
+            if (scene) {
+              scene.play();
+              console.log("場景已啟動，isPlaying:", scene.isPlaying);
             }
-          } else {
-            console.error("找不到影片元素");
+            
+            // 檢查影片狀態並確保載入
+            const video = document.getElementById("greenscreen-video");
+            if (video) {
+              console.log("影片初始狀態 - readyState:", video.readyState, "paused:", video.paused);
+              
+              // 監聽影片載入事件
+              video.addEventListener("canplay", () => {
+                console.log("影片可以播放，readyState:", video.readyState);
+              });
+              
+              video.addEventListener("loadedmetadata", () => {
+                console.log("影片 metadata 已載入，尺寸:", video.videoWidth, "x", video.videoHeight);
+              });
+              
+              // 預載影片
+              video.load();
+              
+              // 檢查平面元素和材質
+              const plane = document.getElementById("video-plane");
+              if (plane) {
+                console.log("影片平面元素存在");
+                setTimeout(() => {
+                  const mesh = plane.getObject3D("mesh");
+                  if (mesh) {
+                    console.log("Mesh 存在，材質:", mesh.material ? mesh.material.type : "無");
+                    if (mesh.material && mesh.material.uniforms) {
+                      const texture = mesh.material.uniforms.map.value;
+                      console.log("Texture:", texture ? (texture.isTexture ? "是 Texture" : "不是 Texture") : "無");
+                      if (texture && texture.isTexture) {
+                        console.log("Texture 已準備好，等待標記偵測");
+                      }
+                    }
+                  } else {
+                    console.warn("找不到 mesh");
+                  }
+                }, 1000);
+              }
+            } else {
+              console.error("找不到影片元素");
+            }
+          }, 500);
+        });
+        
+        // 如果 arjs-video-loaded 事件沒有觸發，使用備用方案
+        setTimeout(() => {
+          if (!arSystem) {
+            console.warn("AR.js 系統可能未完全初始化，使用備用初始化");
+            startVideoOnMarker();
+            setupCameraMonitoring();
+            preventPagePause();
           }
-        }, 1000);
+        }, 3000);
       });
     }
     
@@ -586,6 +672,10 @@ AFRAME.registerShader("chroma-key", {
     if (renderCheckInterval) {
       clearInterval(renderCheckInterval);
       renderCheckInterval = null;
+    }
+    if (window.arMarkerCheckInterval) {
+      clearInterval(window.arMarkerCheckInterval);
+      window.arMarkerCheckInterval = null;
     }
     if (cameraStream) {
       cameraStream.getTracks().forEach(track => track.stop());
