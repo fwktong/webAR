@@ -180,6 +180,13 @@ AFRAME.registerShader("chroma-key", {
     
     console.log("標記已偵測到，嘗試播放影片");
     
+    // 確保平面可見
+    const planeMesh = videoPlane.getObject3D("mesh");
+    if (planeMesh) {
+      planeMesh.visible = true;
+      console.log("設置平面為可見");
+    }
+    
     // 確保影片播放
     if (video.paused || video.ended) {
       video.play().then(() => {
@@ -187,16 +194,17 @@ AFRAME.registerShader("chroma-key", {
       }).catch((err) => {
         console.warn("影片播放失敗:", err);
       });
+    } else {
+      console.log("影片已在播放中");
     }
     
     // 檢查並更新 shader 材質
-    const mesh = videoPlane.getObject3D("mesh");
-    if (mesh && mesh.material) {
-      console.log("更新材質，類型:", mesh.material.type);
+    if (planeMesh && planeMesh.material) {
+      console.log("更新材質，類型:", planeMesh.material.type);
       
       // 確保材質的 map 有正確的 video texture
-      if (mesh.material.uniforms && mesh.material.uniforms.map) {
-        const texture = mesh.material.uniforms.map.value;
+      if (planeMesh.material.uniforms && planeMesh.material.uniforms.map) {
+        const texture = planeMesh.material.uniforms.map.value;
         if (texture) {
           if (texture.isTexture) {
             console.log("Texture 存在，強制更新");
@@ -257,21 +265,45 @@ AFRAME.registerShader("chroma-key", {
     let markerCheckInterval = setInterval(() => {
       if (!marker || !marker.object3D) return;
       
+      const videoPlane = document.getElementById("video-plane");
+      if (!videoPlane) return;
+      
       // 檢查標記是否可見（通過檢查 object3D 的 visible 屬性）
       // 或者檢查 AR.js 的 marker 組件狀態
       let markerVisible = false;
       
+      // 方法1: 檢查 marker 的 object3D visible
       if (marker.object3D) {
         markerVisible = marker.object3D.visible;
       }
       
-      // 也可以通過檢查 marker 組件的屬性
-      if (marker.components && marker.components['arjs-marker']) {
-        const markerComponent = marker.components['arjs-marker'];
-        // 某些版本的 AR.js 可能有 isMarkerVisible 屬性
-        if (markerComponent.isMarkerVisible !== undefined) {
-          markerVisible = markerComponent.isMarkerVisible;
+      // 方法2: 檢查 marker 組件的屬性
+      if (marker.components) {
+        // 檢查 arjs-marker 組件
+        const arjsMarker = marker.components['arjs-marker'];
+        if (arjsMarker) {
+          // 檢查 AR.js 內部狀態
+          if (arjsMarker.arMarker) {
+            // 某些版本可能有 visible 屬性
+            if (arjsMarker.arMarker.visible !== undefined) {
+              markerVisible = arjsMarker.arMarker.visible;
+            }
+          }
         }
+      }
+      
+      // 方法3: 檢查平面的父級（marker）是否可見
+      const planeMesh = videoPlane.getObject3D("mesh");
+      if (planeMesh && planeMesh.parent) {
+        // 如果平面的父級（marker）可見，標記應該被偵測到
+        if (planeMesh.parent.visible) {
+          markerVisible = true;
+        }
+      }
+      
+      // 方法4: 直接檢查平面的 visible（如果平面可見，標記應該被偵測到）
+      if (planeMesh && planeMesh.visible) {
+        markerVisible = true;
       }
       
       if (markerVisible !== lastMarkerState) {
@@ -283,6 +315,13 @@ AFRAME.registerShader("chroma-key", {
           console.log("標記狀態檢查：不可見（備用機制觸發）");
           pauseVideoOnMarker();
         }
+      }
+      
+      // 調試信息：每5秒輸出一次狀態
+      if (Math.random() < 0.01) { // 約每5秒一次（200ms * 25）
+        console.log("標記調試 - marker.object3D.visible:", marker.object3D ? marker.object3D.visible : "N/A",
+                   "planeMesh.visible:", planeMesh ? planeMesh.visible : "N/A",
+                   "video.paused:", video ? video.paused : "N/A");
       }
     }, 200); // 每 200ms 檢查一次
     
@@ -628,11 +667,15 @@ AFRAME.registerShader("chroma-key", {
                   const mesh = plane.getObject3D("mesh");
                   if (mesh) {
                     console.log("Mesh 存在，材質:", mesh.material ? mesh.material.type : "無");
+                    console.log("Mesh visible:", mesh.visible);
                     if (mesh.material && mesh.material.uniforms) {
                       const texture = mesh.material.uniforms.map.value;
                       console.log("Texture:", texture ? (texture.isTexture ? "是 Texture" : "不是 Texture") : "無");
                       if (texture && texture.isTexture) {
                         console.log("Texture 已準備好，等待標記偵測");
+                        // 強制設置為可見（測試用）
+                        mesh.visible = true;
+                        console.log("強制設置平面為可見（測試）");
                       }
                     }
                   } else {
@@ -640,6 +683,29 @@ AFRAME.registerShader("chroma-key", {
                   }
                 }, 1000);
               }
+              
+              // 測試模式：強制顯示平面（即使沒有標記）
+              // 這可以幫助診斷問題是在標記偵測還是在渲染
+              setTimeout(() => {
+                const testPlane = document.getElementById("video-plane");
+                if (testPlane) {
+                  const testMesh = testPlane.getObject3D("mesh");
+                  if (testMesh) {
+                    console.log("測試模式：強制顯示平面和播放影片");
+                    testMesh.visible = true;
+                    const testVideo = document.getElementById("greenscreen-video");
+                    if (testVideo) {
+                      testVideo.play().catch(err => console.warn("測試播放失敗:", err));
+                    }
+                    // 5秒後恢復正常模式
+                    setTimeout(() => {
+                      console.log("測試模式結束，恢復正常標記偵測");
+                      testMesh.visible = false;
+                      if (testVideo) testVideo.pause();
+                    }, 5000);
+                  }
+                }
+              }, 2000);
             } else {
               console.error("找不到影片元素");
             }
