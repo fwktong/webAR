@@ -299,11 +299,23 @@ AFRAME.registerShader("chroma-key", {
   let lastMatrixString = "";
   function checkMarkerAndUpdateVisibility() {
     const marker = document.querySelector("a-marker");
-    if (!marker || !marker.object3D) return;
+    if (!marker) {
+      console.warn("checkMarkerAndUpdateVisibility: 找不到 marker");
+      return;
+    }
+    if (!marker.object3D) {
+      console.warn("checkMarkerAndUpdateVisibility: marker.object3D 不存在");
+      return;
+    }
     
     const videoPlane = document.getElementById("video-plane");
     const testPlane = document.getElementById("test-plane");
-    if (!videoPlane) return;
+    if (!videoPlane) {
+      console.warn("checkMarkerAndUpdateVisibility: 找不到 video-plane");
+      return;
+    }
+    
+    console.log("checkMarkerAndUpdateVisibility 被調用");
     
     // 檢查 AR.js marker 組件的內部狀態
     let isMarkerDetected = false;
@@ -380,29 +392,71 @@ AFRAME.registerShader("chroma-key", {
     // 先嘗試一次強制設置，看看是否能顯示
     if (!window.forceVisibleTested) {
       window.forceVisibleTested = true;
-      console.log("強制設置測試：設置 marker 和子元素為可見（僅測試一次）");
+      console.log("=== 強制設置測試：設置 marker 和子元素為可見（僅測試一次）===");
+      
+      // 強制設置 marker 可見
       marker.object3D.visible = true;
+      console.log("設置 marker.object3D.visible = true");
+      
+      // 遍歷所有子元素
+      let childCount = 0;
       marker.object3D.traverse((child) => {
         if (child.visible !== undefined) {
           child.visible = true;
+          childCount++;
         }
       });
+      console.log(`設置了 ${childCount} 個子元素為可見`);
       
       // 也強制播放影片
       const video = document.getElementById("greenscreen-video");
       if (video) {
-        video.play().catch(err => console.warn("強制播放失敗:", err));
+        video.play().then(() => {
+          console.log("影片強制播放成功");
+        }).catch(err => {
+          console.warn("影片強制播放失敗:", err);
+        });
       }
       
       // 輸出詳細狀態
-      console.log("強制設置後的狀態:");
-      console.log("  marker.object3D.visible:", marker.object3D.visible);
       const planeMesh = videoPlane.getObject3D("mesh");
       const testMesh = testPlane ? testPlane.getObject3D("mesh") : null;
+      console.log("強制設置後的狀態:");
+      console.log("  marker.object3D.visible:", marker.object3D.visible);
       console.log("  planeMesh.visible:", planeMesh ? planeMesh.visible : "N/A");
       console.log("  testMesh.visible:", testMesh ? testMesh.visible : "N/A");
-      console.log("  matrix:", matrix ? matrix.elements.slice(12, 15) : "N/A");
+      if (matrix && matrix.elements) {
+        console.log("  matrix translation:", matrix.elements.slice(12, 15));
+        console.log("  matrix isIdentity:", matrix.isIdentity());
+      } else {
+        console.log("  matrix: N/A");
+      }
     }
+  }
+  
+  // 在初始化時也強制設置一次（確保一定會執行）
+  function forceSetMarkerVisibleForTest() {
+    const marker = document.querySelector("a-marker");
+    if (!marker || !marker.object3D) {
+      console.warn("forceSetMarkerVisibleForTest: marker 不存在，稍後重試");
+      setTimeout(forceSetMarkerVisibleForTest, 1000);
+      return;
+    }
+    
+    console.log("=== 初始化時強制設置測試 ===");
+    marker.object3D.visible = true;
+    marker.object3D.traverse((child) => {
+      if (child.visible !== undefined) {
+        child.visible = true;
+      }
+    });
+    
+    const video = document.getElementById("greenscreen-video");
+    if (video) {
+      video.play().catch(err => console.warn("初始化播放失敗:", err));
+    }
+    
+    console.log("初始化強制設置完成，marker.object3D.visible:", marker.object3D.visible);
   }
 
   function startVideoOnMarker() {
@@ -749,6 +803,11 @@ AFRAME.registerShader("chroma-key", {
     if (scene) {
       scene.addEventListener("loaded", () => {
         console.log("場景已載入，開始初始化 AR 功能");
+        
+        // 立即嘗試強制設置（用於測試）
+        setTimeout(() => {
+          forceSetMarkerVisibleForTest();
+        }, 2000);
         
         // 等待 AR.js 系統完全初始化
         scene.addEventListener("arjs-video-loaded", () => {
