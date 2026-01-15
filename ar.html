@@ -10,11 +10,11 @@
     <meta name="description" content="使用 A-Frame 與 AR.js 的 Web AR 體驗頁面。" />
     <link rel="stylesheet" href="styles.css" />
 
-    <!-- A-Frame 與 AR.js（建議版本：1.4.1 與 AR.js 3.4.4 相對穩定） -->
-    <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.4/aframe/build/aframe-ar.js"></script>
+    <!-- 使用與 AR.js 官方範例相容的版本組合（穩定版） -->
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.3.2/aframe/build/aframe-ar.js"></script>
 
-    <!-- AR 頁面專用邏輯 -->
+    <!-- AR 頁面專用邏輯（不再操作 AR.js 內部，只處理 UI/截圖/錄影） -->
     <script src="ar.js" defer></script>
   </head>
   <body class="ar-body">
@@ -32,17 +32,16 @@
         </ul>
       </div>
 
-      <!-- A-Frame + AR.js 場景 -->
+      <!-- A-Frame + AR.js 場景（最小穩定設定） -->
       <a-scene
         id="ar-scene"
         embedded
         vr-mode-ui="enabled: false"
         renderer="logarithmicDepthBuffer: true; antialias: true; alpha: true;"
-        arjs="sourceType: webcam; debugUIEnabled: false; trackingMethod: best; videoTexture: true; displayWidth: 1280; displayHeight: 720; maxDetectionRate: 30; cameraParametersUrl: https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.4/data/data/camera_para.dat;"
+        arjs="sourceType: webcam; debugUIEnabled: false;"
       >
         <a-assets>
-          <!-- 綠幕影片：可替換為自己的影片 URL -->
-          <!-- 注意：影片需允許跨來源播放，並建議使用 mp4 (H.264 + AAC) -->
+          <!-- 先用普通影片，不做去背，確認 AR 正常 -->
           <video
             id="greenscreen-video"
             src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
@@ -53,28 +52,17 @@
           ></video>
         </a-assets>
 
-        <!-- Hiro 標記：在此標記上顯示去背影片 -->
+        <!-- Hiro 標記：在此標記上顯示普通影片平面 -->
         <a-marker preset="hiro" id="hiro-marker">
-          <!-- 先使用簡單材質測試，確認平面是否可見 -->
-          <a-plane
+          <!-- 使用 A-Frame 內建 a-video，先確定看得到 -->
+          <a-video
             id="video-plane"
-            position="0 0.2 0"
-            rotation="-90 0 0"
+            src="#greenscreen-video"
             width="1.5"
-            height="1.0"
-            material="shader: chroma-key; src: #greenscreen-video; keyColor: 0.0 1.0 0.0; similarity: 0.4; smoothness: 0.1; side: double;"
-            visible="true"
-          ></a-plane>
-          <!-- 測試用：簡單的紅色平面，用於確認位置 -->
-          <a-plane
-            id="test-plane"
-            position="0 0.3 0"
+            height="0.9"
+            position="0 0 0"
             rotation="-90 0 0"
-            width="0.5"
-            height="0.5"
-            material="color: red; side: double;"
-            visible="true"
-          ></a-plane>
+          ></a-video>
         </a-marker>
 
         <!-- AR 相機 -->
