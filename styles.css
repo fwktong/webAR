@@ -125,6 +125,37 @@ a-scene {
   height: 100%;
 }
 
+/* 強制 AR.js 相機背景層級（AR.js 會注入 #arjs-video / canvas）
+   有些裝置/瀏覽器會出現「只閃一下就黑屏」其實是 video/canvas 被蓋住或尺寸變 0。
+*/
+#arjs-video,
+video#arjs-video {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  object-fit: cover !important;
+  z-index: 0 !important;
+  background: #000 !important;
+}
+
+/* A-Frame 的 WebGL canvas 通常在 video 上面（用透明 renderer 顯示） */
+canvas.a-canvas,
+canvas {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 1 !important;
+}
+
+/* UI 一定要在最上層 */
+.ar-ui-bottom {
+  z-index: 10;
+}
+
 /* 底部控制列 */
 .ar-ui-bottom {
   position: absolute;
@@ -290,6 +321,8 @@ a-scene {
     font-size: 1.05rem;
   }
 }
+
+
 
 
 
