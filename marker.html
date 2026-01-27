@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hiro 標記 - AR 追蹤圖案</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 100%);
+            color: #fff;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            color: #00f5ff;
+        }
+        
+        .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(0, 245, 255, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: left;
+        }
+        
+        .instructions h2 {
+            color: #00f5ff;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        
+        .instructions ol {
+            padding-left: 25px;
+            line-height: 2;
+        }
+        
+        .instructions li {
+            margin-bottom: 10px;
+        }
+        
+        .marker-container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 245, 255, 0.3);
+        }
+        
+        .marker-image {
+            width: 100%;
+            max-width: 400px;
+            height: auto;
+            border: 3px solid #000;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+        
+        .btn {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #00f5ff 0%, #7000ff 100%);
+            border: none;
+            border-radius: 30px;
+            color: white;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.2s ease;
+        }
+        
+        .btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .btn:active {
+            transform: scale(0.95);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .note {
+            background: rgba(255, 200, 0, 0.2);
+            border: 1px solid rgba(255, 200, 0, 0.5);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .note strong {
+            color: #ffc800;
+        }
+        
+        @media print {
+            body {
+                background: white;
+                color: black;
+            }
+            
+            .instructions, .buttons, .note {
+                display: none;
+            }
+            
+            .marker-container {
+                box-shadow: none;
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📍 Hiro AR 標記</h1>
+        
+        <div class="instructions">
+            <h2>使用說明</h2>
+            <ol>
+                <li><strong>列印標記：</strong>點擊下方「列印標記」按鈕，將此圖案列印在白紙上（建議 A4 大小）</li>
+                <li><strong>或儲存圖片：</strong>點擊「下載圖片」將標記儲存到手機，然後在另一個裝置上顯示</li>
+                <li><strong>確保清晰：</strong>標記必須清晰可見，避免反光或模糊</li>
+                <li><strong>平整放置：</strong>將標記平放在桌面或牆上</li>
+                <li><strong>充足光線：</strong>確保環境光線充足，避免陰影遮擋標記</li>
+                <li><strong>開始體驗：</strong>返回 AR 頁面，將相機對準標記即可看到 AR 內容</li>
+            </ol>
+        </div>
+        
+        <div class="marker-container">
+            <img 
+                src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/hiro.png" 
+                alt="Hiro AR Marker" 
+                class="marker-image"
+                id="markerImage"
+                crossorigin="anonymous">
+        </div>
+        
+        <div class="buttons">
+            <button class="btn" onclick="window.print()">
+                🖨️ 列印標記
+            </button>
+            <button class="btn" onclick="downloadMarker()">
+                💾 下載圖片
+            </button>
+            <a href="ar.html" class="btn btn-secondary">
+                📱 返回 AR 相機
+            </a>
+            <a href="index.html" class="btn btn-secondary">
+                🏠 返回首頁
+            </a>
+        </div>
+        
+        <div class="note">
+            <strong>💡 提示：</strong>
+            <p>如果 AR 追蹤不穩定，請嘗試：</p>
+            <ul style="text-align: left; margin-top: 10px; padding-left: 20px;">
+                <li>增加環境光線</li>
+                <li>確保標記完全在相機視野內</li>
+                <li>保持相機與標記距離約 20-50 公分</li>
+                <li>避免標記反光或皺摺</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        function downloadMarker() {
+            const img = document.getElementById('markerImage');
+            const link = document.createElement('a');
+            link.href = img.src;
+            link.download = 'hiro-ar-marker.png';
+            link.click();
+        }
+    </script>
+</body>
+</html>
+

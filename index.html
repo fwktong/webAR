@@ -1,58 +1,109 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
-  <head>
-    <meta charset="UTF-8" />
-    <title>AR 體驗首頁</title>
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-    />
-    <meta name="description" content="Web AR 示範：使用 A-Frame 與 AR.js 的標記式 AR 體驗。" />
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body class="landing-body">
-    <div class="landing-container">
-      <div class="landing-content">
-        <h1 class="landing-title">Web AR 體驗</h1>
-        <p class="landing-subtitle">
-          使用手機瀏覽器，對準 Hiro 標記，即可看到綠幕去背影片疊加在現實世界上。
-        </p>
-        <button
-          class="primary-btn landing-btn"
-          onclick="window.location.href='ar.html'"
-        >
-          進入 AR 體驗
-        </button>
-        <div class="landing-help">
-          <h2>使用說明</h2>
-          <ol>
-            <li>請使用手機（iPhone Safari/Chrome 或 Android Chrome）。</li>
-            <li>確保網站透過 HTTPS 連線（例如 GitHub Pages / Netlify）。</li>
-            <li>
-              準備 Hiro 標記：可從
-              <a
-                href="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/HIRO.jpg"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                這裡下載並列印 Hiro 標記
-              </a>
-              ，或在電腦螢幕上顯示。
-            </li>
-          </ol>
-        </div>
-      </div>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>AR 體驗 - 擴增實境網站</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body class="landing-page">
+    <!-- 動態背景 -->
+    <div class="animated-background">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
+        <div class="grid-overlay"></div>
     </div>
-  </body>
+
+    <!-- 主要內容 -->
+    <div class="landing-container">
+        <div class="content-wrapper">
+            <!-- Logo/標題區 -->
+            <div class="header-section">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#00f5ff;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#ff00ea;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="url(#logoGradient)" stroke-width="3" opacity="0.6"/>
+                        <polygon points="50,20 70,40 70,60 50,80 30,60 30,40" fill="url(#logoGradient)" opacity="0.8"/>
+                        <circle cx="50" cy="50" r="8" fill="#fff"/>
+                    </svg>
+                </div>
+                <h1 class="main-title">
+                    <span class="title-line">擴增實境</span>
+                    <span class="title-line subtitle">AR EXPERIENCE</span>
+                </h1>
+                <p class="tagline">將虛擬與現實完美融合</p>
+            </div>
+
+            <!-- CTA 按鈕 -->
+            <div class="cta-section">
+                <button id="enterARBtn" class="enter-ar-button">
+                    <span class="button-bg"></span>
+                    <span class="button-content">
+                        <svg class="button-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span class="button-text">進入 AR 體驗</span>
+                    </span>
+                    <span class="button-shine"></span>
+                </button>
+                
+                <div class="info-cards">
+                    <div class="info-card">
+                        <div class="card-icon">📱</div>
+                        <div class="card-text">支援 iOS & Android</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="card-icon">🎥</div>
+                        <div class="card-text">即時影片疊加</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="card-icon">📸</div>
+                        <div class="card-text">拍照 & 錄影</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 使用說明 -->
+            <div class="instructions">
+                <h3>使用步驟</h3>
+                <ol>
+                    <li>點擊上方按鈕進入 AR 模式</li>
+                    <li>允許相機權限</li>
+                    <li>將相機對準 <a href="marker.html" target="_blank">Hiro 標記</a></li>
+                    <li>觀看 AR 影片並拍照或錄影</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 進入 AR 體驗
+        document.getElementById('enterARBtn').addEventListener('click', function() {
+            // 添加點擊動畫
+            this.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                this.style.transform = '';
+                window.location.href = 'ar.html';
+            }, 150);
+        });
+
+        // 背景動畫
+        const orbs = document.querySelectorAll('.gradient-orb');
+        orbs.forEach((orb, index) => {
+            const duration = 20 + index * 5;
+            orb.style.animationDuration = `${duration}s`;
+        });
+    </script>
+</body>
 </html>
-
-
-
-
-
-
-
-
-
-
 

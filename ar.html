@@ -1,104 +1,203 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
-  <head>
-    <meta charset="UTF-8" />
-    <title>AR 體驗</title>
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-    />
-    <meta name="description" content="使用 A-Frame 與 AR.js 的 Web AR 體驗頁面。" />
-    <link rel="stylesheet" href="styles.css" />
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>AR 相機 - 擴增實境體驗</title>
+    
+    <!-- A-Frame 和 AR.js -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="ar-page">
+    
+    <!-- 載入畫面 -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-content">
+            <div class="loader"></div>
+            <p class="loading-text">正在啟動 AR 相機...</p>
+            <p class="loading-hint">請允許相機權限</p>
+        </div>
+    </div>
 
-    <!-- 使用與 AR.js 官方範例相容的版本組合（穩定版） -->
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.3.2/aframe/build/aframe-ar.js"></script>
-
-    <!-- AR 頁面專用邏輯（不再操作 AR.js 內部，只處理 UI/截圖/錄影） -->
-    <script src="ar.js" defer></script>
-  </head>
-  <body class="ar-body">
-    <div id="ar-root">
-      <!-- AR 不支援時的簡易訊息 -->
-      <div id="ar-unsupported" class="ar-unsupported hidden">
-        <h2>此裝置或瀏覽器可能不支援 Web AR</h2>
-        <p>
-          請確認：
-        </p>
-        <ul>
-          <li>使用最新版 Safari / Chrome 手機瀏覽器。</li>
-          <li>已透過 HTTPS 開啟本網站。</li>
-          <li>允許瀏覽器存取相機權限。</li>
-        </ul>
-      </div>
-
-      <!-- A-Frame + AR.js 場景（最小穩定設定） -->
-      <a-scene
-        id="ar-scene"
+    <!-- AR 場景 -->
+    <a-scene
+        id="arScene"
         embedded
+        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3; trackingMethod: best;"
         vr-mode-ui="enabled: false"
-        renderer="logarithmicDepthBuffer: true; antialias: true; alpha: true;"
-        arjs="sourceType: webcam; debugUIEnabled: false;"
-      >
+        renderer="logarithmicDepthBuffer: true; precision: medium; antialias: true; alpha: true;"
+        loading-screen="enabled: false">
+        
+        <!-- 資源預載 -->
         <a-assets>
-          <!-- 先用普通影片，不做去背，確認 AR 正常 -->
-          <video
-            id="greenscreen-video"
-            src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
-            loop
-            crossorigin="anonymous"
-            playsinline
-            webkit-playsinline
-          ></video>
+            <!-- 綠幕影片 - 使用範例影片 -->
+            <video 
+                id="greenScreenVideo" 
+                src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4"
+                preload="auto" 
+                loop="true" 
+                crossorigin="anonymous"
+                playsinline
+                webkit-playsinline
+                muted>
+            </video>
         </a-assets>
-
-        <!-- Hiro 標記：在此標記上顯示普通影片平面 -->
-        <a-marker preset="hiro" id="hiro-marker">
-          <!-- 使用 A-Frame 內建 a-video，先確定看得到 -->
-          <a-video
-            id="video-plane"
-            src="#greenscreen-video"
-            width="1.5"
-            height="0.9"
-            position="0 0 0"
-            rotation="-90 0 0"
-          ></a-video>
-        </a-marker>
 
         <!-- AR 相機 -->
         <a-entity camera></a-entity>
-      </a-scene>
 
-      <!-- 底部控制列 UI -->
-      <div class="ar-ui-bottom">
-        <button id="btn-back" class="secondary-btn">
-          ⬅ 返回首頁
-        </button>
-        <button id="btn-photo" class="circle-btn">
-          📷
-        </button>
-        <button id="btn-record" class="circle-btn record-btn">
-          ⏺
-        </button>
-        <div class="timer-label">
-          <span id="record-timer">00:00</span>
-          <span class="timer-max">/ 00:30</span>
+        <!-- Hiro 標記 -->
+        <a-marker preset="hiro" id="hiroMarker">
+            <!-- 綠幕影片平面 -->
+            <a-plane
+                id="videoPlane"
+                position="0 0 0"
+                rotation="-90 0 0"
+                width="1.6"
+                height="0.9"
+                material="shader: chromakey; src: #greenScreenVideo; color: 0.1 0.9 0.2; transparent: true; opacity: 1;">
+            </a-plane>
+            
+            <!-- 邊框指示器 -->
+            <a-box 
+                position="0 0.05 0" 
+                scale="1.7 0.1 1" 
+                material="color: #00f5ff; opacity: 0.3; transparent: true;"
+                animation="property: material.opacity; from: 0.3; to: 0.6; dur: 1000; dir: alternate; loop: true;">
+            </a-box>
+        </a-marker>
+    </a-scene>
+
+    <!-- UI 控制層 -->
+    <div id="arUI" class="ar-ui hidden">
+        <!-- 頂部狀態列 -->
+        <div class="top-bar">
+            <button id="backBtn" class="control-btn back-btn">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>返回</span>
+            </button>
+            
+            <div id="markerStatus" class="marker-status">
+                <span class="status-dot"></span>
+                <span class="status-text">尋找標記中...</span>
+            </div>
         </div>
-      </div>
+
+        <!-- 錄影計時器 -->
+        <div id="recordingTimer" class="recording-timer hidden">
+            <span class="recording-dot"></span>
+            <span id="timerText">00:00</span>
+            <span class="timer-limit">/ 00:30</span>
+        </div>
+
+        <!-- 底部控制列 -->
+        <div class="bottom-controls">
+            <button id="captureBtn" class="control-btn capture-btn" title="拍照">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>拍照</span>
+            </button>
+
+            <button id="recordBtn" class="control-btn record-btn" title="錄影">
+                <svg class="record-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2" fill="currentColor"/>
+                </svg>
+                <svg class="stop-icon hidden" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="6" y="6" width="12" height="12" stroke="currentColor" stroke-width="2" fill="currentColor"/>
+                </svg>
+                <span class="record-text">錄影</span>
+                <span class="stop-text hidden">停止</span>
+            </button>
+
+            <a id="downloadLink" class="control-btn download-btn hidden" download title="下載">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>下載</span>
+            </a>
+        </div>
+
+        <!-- 提示訊息 -->
+        <div id="hintMessage" class="hint-message">
+            <p>📱 將相機對準 Hiro 標記</p>
+            <a href="marker.html" target="_blank" class="marker-link">查看標記圖片</a>
+        </div>
     </div>
 
-    <!-- 簡易載入中遮罩 -->
-    <div id="loading-overlay" class="loading-overlay">
-      <div class="loading-box">
-        <div class="spinner"></div>
-        <p>正在啟動 AR 相機，請稍候…</p>
-      </div>
-    </div>
-  </body>
+    <!-- Chroma Key Shader -->
+    <script>
+        // 註冊綠幕去背 shader
+        AFRAME.registerShader('chromakey', {
+            schema: {
+                src: {type: 'map'},
+                color: {type: 'color', default: '0.1 0.9 0.2'},
+                transparent: {type: 'boolean', default: true},
+                opacity: {type: 'number', default: 1.0}
+            },
+            
+            init: function(data) {
+                const videoTexture = new THREE.VideoTexture(data.src);
+                videoTexture.minFilter = THREE.LinearFilter;
+                videoTexture.magFilter = THREE.LinearFilter;
+                videoTexture.format = THREE.RGBFormat;
+                
+                this.material = new THREE.ShaderMaterial({
+                    uniforms: {
+                        tex: {type: 't', value: videoTexture},
+                        keyColor: {type: 'v3', value: new THREE.Vector3(0.1, 0.9, 0.2)},
+                        similarity: {type: 'f', value: 0.4},
+                        smoothness: {type: 'f', value: 0.1},
+                        opacity: {type: 'f', value: data.opacity}
+                    },
+                    vertexShader: `
+                        varying vec2 vUv;
+                        void main() {
+                            vUv = uv;
+                            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                        }
+                    `,
+                    fragmentShader: `
+                        uniform sampler2D tex;
+                        uniform vec3 keyColor;
+                        uniform float similarity;
+                        uniform float smoothness;
+                        uniform float opacity;
+                        varying vec2 vUv;
+                        
+                        void main() {
+                            vec4 videoColor = texture2D(tex, vUv);
+                            
+                            float Y1 = 0.299 * keyColor.r + 0.587 * keyColor.g + 0.114 * keyColor.b;
+                            float Cr1 = keyColor.r - Y1;
+                            float Cb1 = keyColor.b - Y1;
+                            
+                            float Y2 = 0.299 * videoColor.r + 0.587 * videoColor.g + 0.114 * videoColor.b;
+                            float Cr2 = videoColor.r - Y2;
+                            float Cb2 = videoColor.b - Y2;
+                            
+                            float blend = smoothstep(similarity, similarity + smoothness, distance(vec2(Cr2, Cb2), vec2(Cr1, Cb1)));
+                            
+                            gl_FragColor = vec4(videoColor.rgb, videoColor.a * blend * opacity);
+                        }
+                    `,
+                    transparent: true,
+                    side: THREE.DoubleSide
+                });
+            }
+        });
+    </script>
+
+    <!-- 主要 JavaScript -->
+    <script src="ar-controls.js"></script>
+</body>
 </html>
-
-
-
-
-
 
